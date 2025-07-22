@@ -1,0 +1,4 @@
+cd "C:/Users/LAPTOP HOUSE/Desktop/driving-behavior-project"
+& "C:/Users/LAPTOP HOUSE/AppData/Local/Programs/Python/Python311/python.exe" app.py
+
+.\tf_env\Scripts\activate

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driving Behavior Dashboard</title>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            flex-grow: 1;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .risk-level {
+            font-weight: bold;
+        }
+
+        .risk-level.aggressive-risk {
+            color: red;
+        }
+        .risk-level.normal-risk {
+            color: green;
+        }
+        .risk-level.slow-risk {
+            color: blue;
+        }
+
+        .alert {
+            color: white;
+            background-color: #ff4d4d;
+            font-weight: bold;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            display: none;
+            margin-top: 20px;
+            animation: blink 1s linear infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9e9e9;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .controls button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .controls button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .controls button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .report-controls {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .report-controls label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .report-controls input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #simulator-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+            min-height: 20px;
+            text-align: center;
+        }
+
+        #report-output {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 5px;
+            min-height: 100px;
+            overflow-y: auto;
+            max-height: 400px;
+            line-height: 1.5;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .data-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            font-size: 14px;
+            color: #777;
+            background-color: #e9e9e9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Driving Behavior Dashboard</h1>
+    </header>
+    <main>
+        <h2>Real-time Driving Data</h2>
+        
+        <div class="data-grid">
+            <div class="data-card">
+                <p><strong>Current Timestamp:</strong> <span id="timestamp">--</span></p>
+                <p><strong>Speed:</strong> <span id="speed">--</span></p>
+            </div>
+            <div class="data-card">
+                <p><strong>Risk Level:</strong> <span id="risk" class="risk-level">--</span></p>
+                <p><strong>Behavior Class:</strong> <span id="class">--</span></p>
+            </div>
+        </div>
+
+        <div class="alert" id="alert">AGGRESSIVE DRIVING DETECTED!</div>
+
+        <div class="controls">
+            <button id="runSimulatorBtn">Run Driving Simulator</button>
+            <button id="generateReportBtn">Generate Driving Report</button>
+            <button id="resetSimulatorBtn">Reset Session</button>
+        </div>
+        <div id="simulator-status"></div>
+
+        <h2>Driving Session Report</h2>
+        <div class="report-controls">
+            <label for="driverName">Driver Name:</label>
+            <input type="text" id="driverName" value="Osmi">
+        </div>
+        <pre id="report-output">No report generated yet. Click "Generate Driving Report" to create one.</pre>
+    </main>
+    <footer>
+        &copy; 2025 Driving Behavior Monitoring System | FYP Project
+    </footer>
+
+    <script>
+        // Connect to the Socket.IO server
+        const socket = io('http://' + document.domain + ':' + location.port);
+
+        // DOM Elements
+        const elements = {
+            timestamp: document.getElementById('timestamp'),
+            class: document.getElementById('class'),
+            risk: document.getElementById('risk'),
+            alert: document.getElementById('alert'),
+            runSimulatorBtn: document.getElementById('runSimulatorBtn'),
+            generateReportBtn: document.getElementById('generateReportBtn'),
+            resetSimulatorBtn: document.getElementById('resetSimulatorBtn'),
+            simulatorStatus: document.getElementById('simulator-status'),
+            reportOutput: document.getElementById('report-output'),
+            speed: document.getElementById('speed'),
+            driverName: document.getElementById('driverName')
+        };
+
+        socket.on('session_reset', function(data) {
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+            document.getElementById('speed').textContent = '--';
+            document.getElementById('risk').textContent = '--';
+            document.getElementById('class').textContent = '--';
+        });
+
+        // Socket.IO Event Handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            elements.simulatorStatus.textContent = 'Connected to server';
+            elements.runSimulatorBtn.disabled = false;
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            elements.simulatorStatus.textContent = 'Disconnected from server';
+            resetDisplay();
+        });
+
+        socket.on('update', (data) => {
+            // Format timestamp
+            const date = new Date(data.timestamp);
+            elements.timestamp.textContent = date.toLocaleString();
+            
+            // Update risk level
+            elements.risk.textContent = data.risk_level || '--';
+            elements.risk.className = 'risk-level';
+            
+            // Update class if available
+            elements.class.textContent = data.class || '--';
+            
+            // Update speed if available
+            if (data.speed !== undefined) {
+                elements.speed.textContent = `${data.speed.toFixed(1)} km/h`;
+            }
+
+            // Handle risk level styling
+            switch(data.risk_level) {
+                case 'Aggressive':
+                    elements.risk.classList.add('aggressive-risk');
+                    elements.alert.style.display = 'block';
+                    break;
+                case 'Normal':
+                    elements.risk.classList.add('normal-risk');
+                    elements.alert.style.display = 'none';
+                    break;
+                case 'Slow':
+                    elements.risk.classList.add('slow-risk');
+                    elements.alert.style.display = 'none';
+                    break;
+                default:
+                    elements.alert.style.display = 'none';
+            }
+        });
+
+        socket.on('simulator_status', (data) => {
+            elements.simulatorStatus.textContent = data.message;
+            elements.runSimulatorBtn.disabled = data.status === 'running';
+        });
+
+        socket.on('driving_report', (data) => {
+            elements.reportOutput.textContent = data.report;
+        });
+
+        socket.on('behavior_update', function(data) {
+            const riskSpan = document.getElementById('risk');
+            riskSpan.textContent = data.risk_level;
+            riskSpan.className = 'risk-level';
+            riskSpan.classList.add(data.risk_level.toLowerCase() + '-risk');
+    
+            // Show/hide alert
+            document.getElementById('alert').style.display = 
+                data.risk_level === 'Aggressive' ? 'block' : 'none';
+        });
+
+        // Button Event Listeners
+        elements.runSimulatorBtn.addEventListener('click', () => {
+            elements.simulatorStatus.textContent = 'Launching simulator...';
+            fetch('/run_simulator')
+                .then(response => response.json())
+                .then(data => {
+                    elements.simulatorStatus.textContent = data.message;
+                    if (data.status === 'success') {
+                        socket.emit('simulator_started');
+                    }
+                })
+                .catch(error => {
+                    elements.simulatorStatus.textContent = 'Error launching simulator';
+                    console.error('Error:', error);
+                });
+        });
+
+        elements.generateReportBtn.addEventListener('click', () => {
+            const driverName = elements.driverName.value.trim() || "Osmi";
+            elements.reportOutput.textContent = 'Generating report... Please wait.';
+            socket.emit('generate_driving_report', {driver_name: driverName});
+        });
+
+        elements.resetSimulatorBtn.addEventListener('click', () => {
+            socket.emit('reset_session');
+            elements.reportOutput.textContent = 'Session reset. Ready for new data.';
+            elements.simulatorStatus.textContent = 'Session reset';
+            resetDisplay();
+        });
+
+        // Helper Functions
+        function resetDisplay() {
+            elements.timestamp.textContent = '--';
+            elements.class.textContent = '--';
+            elements.risk.textContent = '--';
+            elements.speed.textContent = '--';
+            elements.risk.className = 'risk-level';
+            elements.alert.style.display = 'none';
+        }
+
+        // Initialize
+        elements.runSimulatorBtn.disabled = true;
+    </script>
+</body>
+</html>

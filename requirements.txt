@@ -1,0 +1,9 @@
+pandas
+numpy
+scikit-learn
+joblib
+tensorflow
+flask
+flask-socketio
+eventlet
+mysql-connector-python
